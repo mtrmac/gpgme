@@ -47,20 +47,20 @@ const (
 	ProtocolAssuan   Protocol = C.GPGME_PROTOCOL_ASSUAN
 	ProtocolG13      Protocol = C.GPGME_PROTOCOL_G13
 	ProtocolUIServer Protocol = C.GPGME_PROTOCOL_UISERVER
-	ProtocolSpawn    Protocol = C.GPGME_PROTOCOL_SPAWN
-	ProtocolDefault  Protocol = C.GPGME_PROTOCOL_DEFAULT
-	ProtocolUnknown  Protocol = C.GPGME_PROTOCOL_UNKNOWN
+	// ProtocolSpawn    Protocol = C.GPGME_PROTOCOL_SPAWN // Unavailable in 1.4.3
+	ProtocolDefault Protocol = C.GPGME_PROTOCOL_DEFAULT
+	ProtocolUnknown Protocol = C.GPGME_PROTOCOL_UNKNOWN
 )
 
 type PinEntryMode int
 
-const (
-	PinEntryDefault  PinEntryMode = C.GPGME_PINENTRY_MODE_DEFAULT
-	PinEntryAsk      PinEntryMode = C.GPGME_PINENTRY_MODE_ASK
-	PinEntryCancel   PinEntryMode = C.GPGME_PINENTRY_MODE_CANCEL
-	PinEntryError    PinEntryMode = C.GPGME_PINENTRY_MODE_ERROR
-	PinEntryLoopback PinEntryMode = C.GPGME_PINENTRY_MODE_LOOPBACK
-)
+// const ( // Unavailable in 1.3.2
+// 	PinEntryDefault  PinEntryMode = C.GPGME_PINENTRY_MODE_DEFAULT
+// 	PinEntryAsk      PinEntryMode = C.GPGME_PINENTRY_MODE_ASK
+// 	PinEntryCancel   PinEntryMode = C.GPGME_PINENTRY_MODE_CANCEL
+// 	PinEntryError    PinEntryMode = C.GPGME_PINENTRY_MODE_ERROR
+// 	PinEntryLoopback PinEntryMode = C.GPGME_PINENTRY_MODE_LOOPBACK
+// )
 
 type EncryptFlag uint
 
@@ -69,7 +69,7 @@ const (
 	EncryptNoEncryptTo EncryptFlag = C.GPGME_ENCRYPT_NO_ENCRYPT_TO
 	EncryptPrepare     EncryptFlag = C.GPGME_ENCRYPT_PREPARE
 	EncryptExceptSign  EncryptFlag = C.GPGME_ENCRYPT_EXPECT_SIGN
-	EncryptNoCompress  EncryptFlag = C.GPGME_ENCRYPT_NO_COMPRESS
+	// EncryptNoCompress  EncryptFlag = C.GPGME_ENCRYPT_NO_COMPRESS // Unavailable in 1.4.3
 )
 
 type HashAlgo int
@@ -83,7 +83,7 @@ const (
 	KeyListModeExtern       KeyListMode = C.GPGME_KEYLIST_MODE_EXTERN
 	KeyListModeSigs         KeyListMode = C.GPGME_KEYLIST_MODE_SIGS
 	KeyListModeSigNotations KeyListMode = C.GPGME_KEYLIST_MODE_SIG_NOTATIONS
-	KeyListModeWithSecret   KeyListMode = C.GPGME_KEYLIST_MODE_WITH_SECRET
+	// KeyListModeWithSecret   KeyListMode = C.GPGME_KEYLIST_MODE_WITH_SECRET // Unavailable in 1.4.3
 	KeyListModeEphemeral    KeyListMode = C.GPGME_KEYLIST_MODE_EPHEMERAL
 	KeyListModeModeValidate KeyListMode = C.GPGME_KEYLIST_MODE_VALIDATE
 )
@@ -315,13 +315,15 @@ func (c *Context) KeyListMode() KeyListMode {
 	return KeyListMode(C.gpgme_get_keylist_mode(c.ctx))
 }
 
-func (c *Context) SetPinEntryMode(m PinEntryMode) error {
-	return handleError(C.gpgme_set_pinentry_mode(c.ctx, C.gpgme_pinentry_mode_t(m)))
-}
+// Unavailable in 1.3.2:
+// func (c *Context) SetPinEntryMode(m PinEntryMode) error {
+// 	return handleError(C.gpgme_set_pinentry_mode(c.ctx, C.gpgme_pinentry_mode_t(m)))
+// }
 
-func (c *Context) PinEntryMode() PinEntryMode {
-	return PinEntryMode(C.gpgme_get_pinentry_mode(c.ctx))
-}
+// Unavailable in 1.3.2:
+// func (c *Context) PinEntryMode() PinEntryMode {
+// 	return PinEntryMode(C.gpgme_get_pinentry_mode(c.ctx))
+// }
 
 func (c *Context) SetCallback(callback Callback) error {
 	var err error
