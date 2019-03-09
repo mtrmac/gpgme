@@ -7,6 +7,7 @@ package gpgme
 // #include <gpgme.h>
 // #include "go_gpgme.h"
 import "C"
+
 import (
 	"fmt"
 	"io"
@@ -47,19 +48,20 @@ const (
 	ProtocolAssuan   Protocol = C.GPGME_PROTOCOL_ASSUAN
 	ProtocolG13      Protocol = C.GPGME_PROTOCOL_G13
 	ProtocolUIServer Protocol = C.GPGME_PROTOCOL_UISERVER
-	ProtocolDefault  Protocol = C.GPGME_PROTOCOL_DEFAULT
-	ProtocolUnknown  Protocol = C.GPGME_PROTOCOL_UNKNOWN
+	// ProtocolSpawn    Protocol = C.GPGME_PROTOCOL_SPAWN // Unavailable in 1.4.3
+	ProtocolDefault Protocol = C.GPGME_PROTOCOL_DEFAULT
+	ProtocolUnknown Protocol = C.GPGME_PROTOCOL_UNKNOWN
 )
 
 type PinEntryMode int
 
-const (
-	PinEntryDefault  PinEntryMode = C.GPGME_PINENTRY_MODE_DEFAULT
-	PinEntryAsk      PinEntryMode = C.GPGME_PINENTRY_MODE_ASK
-	PinEntryCancel   PinEntryMode = C.GPGME_PINENTRY_MODE_CANCEL
-	PinEntryError    PinEntryMode = C.GPGME_PINENTRY_MODE_ERROR
-	PinEntryLoopback PinEntryMode = C.GPGME_PINENTRY_MODE_LOOPBACK
-)
+// const ( // Unavailable in 1.3.2
+// 	PinEntryDefault  PinEntryMode = C.GPGME_PINENTRY_MODE_DEFAULT
+// 	PinEntryAsk      PinEntryMode = C.GPGME_PINENTRY_MODE_ASK
+// 	PinEntryCancel   PinEntryMode = C.GPGME_PINENTRY_MODE_CANCEL
+// 	PinEntryError    PinEntryMode = C.GPGME_PINENTRY_MODE_ERROR
+// 	PinEntryLoopback PinEntryMode = C.GPGME_PINENTRY_MODE_LOOPBACK
+// )
 
 type EncryptFlag uint
 
@@ -68,6 +70,7 @@ const (
 	EncryptNoEncryptTo EncryptFlag = C.GPGME_ENCRYPT_NO_ENCRYPT_TO
 	EncryptPrepare     EncryptFlag = C.GPGME_ENCRYPT_PREPARE
 	EncryptExceptSign  EncryptFlag = C.GPGME_ENCRYPT_EXPECT_SIGN
+	// EncryptNoCompress  EncryptFlag = C.GPGME_ENCRYPT_NO_COMPRESS // Unavailable in 1.4.3
 )
 
 type HashAlgo int
@@ -81,6 +84,7 @@ const (
 	KeyListModeExtern       KeyListMode = C.GPGME_KEYLIST_MODE_EXTERN
 	KeyListModeSigs         KeyListMode = C.GPGME_KEYLIST_MODE_SIGS
 	KeyListModeSigNotations KeyListMode = C.GPGME_KEYLIST_MODE_SIG_NOTATIONS
+	// KeyListModeWithSecret   KeyListMode = C.GPGME_KEYLIST_MODE_WITH_SECRET // Unavailable in 1.4.3
 	KeyListModeEphemeral    KeyListMode = C.GPGME_KEYLIST_MODE_EPHEMERAL
 	KeyListModeModeValidate KeyListMode = C.GPGME_KEYLIST_MODE_VALIDATE
 )
@@ -312,13 +316,15 @@ func (c *Context) KeyListMode() KeyListMode {
 	return KeyListMode(C.gpgme_get_keylist_mode(c.ctx))
 }
 
-func (c *Context) SetPinEntryMode(m PinEntryMode) error {
-	return handleError(C.gpgme_set_pinentry_mode(c.ctx, C.gpgme_pinentry_mode_t(m)))
-}
+// Unavailable in 1.3.2:
+// func (c *Context) SetPinEntryMode(m PinEntryMode) error {
+// 	return handleError(C.gpgme_set_pinentry_mode(c.ctx, C.gpgme_pinentry_mode_t(m)))
+// }
 
-func (c *Context) PinEntryMode() PinEntryMode {
-	return PinEntryMode(C.gpgme_get_pinentry_mode(c.ctx))
-}
+// Unavailable in 1.3.2:
+// func (c *Context) PinEntryMode() PinEntryMode {
+// 	return PinEntryMode(C.gpgme_get_pinentry_mode(c.ctx))
+// }
 
 func (c *Context) SetCallback(callback Callback) error {
 	var err error
@@ -473,87 +479,6 @@ func (c *Context) Sign(signers []*Key, plain, sig *Data, mode SigMode) error {
 		}
 	}
 	return handleError(C.gpgme_op_sign(c.ctx, plain.dh, sig.dh, C.gpgme_sig_mode_t(mode)))
-}
-
-type AssuanDataCallback func(data []byte) error
-type AssuanInquireCallback func(name, args string) error
-type AssuanStatusCallback func(status, args string) error
-
-// AssuanSend sends a raw Assuan command to gpg-agent
-func (c *Context) AssuanSend(
-	cmd string,
-	data AssuanDataCallback,
-	inquiry AssuanInquireCallback,
-	status AssuanStatusCallback,
-) error {
-	var operr C.gpgme_error_t
-
-	dataPtr := callbackAdd(&data)
-	inquiryPtr := callbackAdd(&inquiry)
-	statusPtr := callbackAdd(&status)
-	cmdCStr := C.CString(cmd)
-	defer C.free(unsafe.Pointer(cmdCStr))
-	err := C.gogpgme_op_assuan_transact_ext(
-		c.ctx,
-		cmdCStr,
-		C.uintptr_t(dataPtr),
-		C.uintptr_t(inquiryPtr),
-		C.uintptr_t(statusPtr),
-		&operr,
-	)
-
-	if handleError(operr) != nil {
-		return handleError(operr)
-	}
-	return handleError(err)
-}
-
-//export gogpgme_assuan_data_callback
-func gogpgme_assuan_data_callback(handle unsafe.Pointer, data unsafe.Pointer, datalen C.size_t) C.gpgme_error_t {
-	c := callbackLookup(uintptr(handle)).(*AssuanDataCallback)
-	if *c == nil {
-		return 0
-	}
-	(*c)(C.GoBytes(data, C.int(datalen)))
-	return 0
-}
-
-//export gogpgme_assuan_inquiry_callback
-func gogpgme_assuan_inquiry_callback(handle unsafe.Pointer, cName *C.char, cArgs *C.char) C.gpgme_error_t {
-	name := C.GoString(cName)
-	args := C.GoString(cArgs)
-	c := callbackLookup(uintptr(handle)).(*AssuanInquireCallback)
-	if *c == nil {
-		return 0
-	}
-	(*c)(name, args)
-	return 0
-}
-
-//export gogpgme_assuan_status_callback
-func gogpgme_assuan_status_callback(handle unsafe.Pointer, cStatus *C.char, cArgs *C.char) C.gpgme_error_t {
-	status := C.GoString(cStatus)
-	args := C.GoString(cArgs)
-	c := callbackLookup(uintptr(handle)).(*AssuanStatusCallback)
-	if *c == nil {
-		return 0
-	}
-	(*c)(status, args)
-	return 0
-}
-
-// ExportModeFlags defines how keys are exported from Export
-type ExportModeFlags uint
-
-const (
-	ExportModeExtern  ExportModeFlags = C.GPGME_EXPORT_MODE_EXTERN
-	ExportModeMinimal ExportModeFlags = C.GPGME_EXPORT_MODE_MINIMAL
-)
-
-func (c *Context) Export(pattern string, mode ExportModeFlags, data *Data) error {
-	pat := C.CString(pattern)
-	defer C.free(unsafe.Pointer(pat))
-	return handleError(C.gpgme_op_export(c.ctx, pat, C.gpgme_export_mode_t(mode), data.dh))
 }
 
 // ImportStatusFlags describes the type of ImportStatus.Status. The C API in gpgme.h simply uses "unsigned".
@@ -811,4 +736,13 @@ func (u *UserID) Comment() string {
 
 func (u *UserID) Email() string {
 	return C.GoString(u.u.email)
+}
+
+// This is somewhat of a horrible hack. We need to unset GPG_AGENT_INFO so that gpgme does not pass --use-agent to GPG.
+// os.Unsetenv should be enough, but that only calls the underlying C library (which gpgme uses) if cgo is involved
+// - and cgo can't be used in tests. So, provide this helper for test initialization.
+func unsetenvGPGAgentInfo() {
+	v := C.CString("GPG_AGENT_INFO")
+	defer C.free(unsafe.Pointer(v))
+	C.unsetenv(v)
 }
