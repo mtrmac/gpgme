@@ -1,3 +1,3 @@
-module github.com/proglottis/gpgme
+module github.com/mtrmac/gpgme
 
 go 1.11
