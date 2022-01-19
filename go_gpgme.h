@@ -11,6 +11,8 @@
 typedef off_t gpgme_off_t; /* Introduced in 1.4.2 */
 #endif
 
+extern gpgme_error_t passphrase_cb (void *opaque, const char *uid_hint, const char *passphrase_info, int last_was_bad, int fd);
+
 extern ssize_t gogpgme_readfunc(void *handle, void *buffer, size_t size);
 extern ssize_t gogpgme_writefunc(void *handle, void *buffer, size_t size);
 extern off_t gogpgme_seekfunc(void *handle, off_t offset, int whence);

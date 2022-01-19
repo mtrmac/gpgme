@@ -14,6 +14,8 @@ import (
 	"runtime"
 	"time"
 	"unsafe"
+
+	"github.com/sirupsen/logrus"
 )
 
 var Version string
@@ -544,6 +546,18 @@ func (c *Context) Encrypt(recipients []*Key, flags EncryptFlag, plaintext, ciphe
 	runtime.KeepAlive(plaintext)
 	runtime.KeepAlive(ciphertext)
 	return handleError(err)
+}
+
+func (c *Context) SetPassphrase(passphrase string) {
+	logrus.Debugf("Setting GPGME passphrase callback", passphrase)
+	callback := C.gpgme_passphrase_cb_t(C.passphrase_cb)
+	cPass := C.CString(passphrase)
+	C.gpgme_set_pinentry_mode(c.ctx, C.GPGME_PINENTRY_MODE_LOOPBACK);
+	C.gpgme_set_passphrase_cb(c.ctx, callback, unsafe.Pointer(cPass))
+}
+
+func (c *Context) ClearPassphrase() {
+	C.gpgme_set_passphrase_cb(c.ctx, nil, nil)
 }
 
 func (c *Context) Sign(signers []*Key, plain, sig *Data, mode SigMode) error {

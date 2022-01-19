@@ -1,4 +1,17 @@
 #include "go_gpgme.h"
+#include <errno.h>
+#include <string.h>
+
+gpgme_error_t passphrase_cb (void *opaque, const char *uid_hint, const char *passphrase_info, int last_was_bad, int fd) {
+	(void)uid_hint;
+	(void)passphrase_info;
+	(void)last_was_bad;
+
+	char *pass = (char*) opaque;
+	gpgme_io_writen(fd, pass, strlen(pass));
+	gpgme_io_writen (fd, "\n", 1);
+	return gpgme_error_from_errno (errno);
+}
 
 gpgme_error_t gogpgme_data_new_from_cbs(gpgme_data_t *dh, gpgme_data_cbs_t cbs, uintptr_t handle) {
 	return gpgme_data_new_from_cbs(dh, cbs, (void *)handle);
